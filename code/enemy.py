@@ -2,12 +2,12 @@ import pygame
 from settings import *
 from entity import Entity
 from support import *
-from astar import astar  # Import the A* function
+from astar import astar
 import math
 
 class Enemy(Entity):
     
-    def __init__(self, monster_name, pos,  groups, obstacle_sprites, damage_player, trigger_death_particles, add_exp, pathfinding_grid):  # Added pathfinding_grid
+    def __init__(self, monster_name, pos, groups, obstacle_sprites, damage_player, trigger_death_particles, add_exp, pathfinding_grid):
         super().__init__(groups)
         self.sprite_type = 'enemy'
         
@@ -34,9 +34,9 @@ class Enemy(Entity):
         self.attack_type = monster_info['attack_type']
         
         # Combat timers
-        self.can_attack  = True
+        self.can_attack = True
         self.attack_time = None
-        self.attack_cooldown_time =  400
+        self.attack_cooldown_time = 400
         self.damage_player = damage_player
         self.trigger_death_particles = trigger_death_particles
         self.add_exp = add_exp
@@ -60,12 +60,6 @@ class Enemy(Entity):
         # Pathfinding attributes
         self.path = []
         self.path_update_cooldown = 0
-        self.path_update_delay = 30  # update path every 30 frames
-        self.last_player_distance = 0
-        self.last_movement = pygame.time.get_ticks()
-        self.target_position = None
-        self.pathfinding_range = 10
-        self.pathfinding_speed = 2
     
     def import_graphics(self, name):
         """Load all animation frames for the specified monster type."""
@@ -75,7 +69,7 @@ class Enemy(Entity):
         for animation in self.animations.keys():
             self.animations[animation] = import_folder(main_path + animation)
     
-    def get_player_distance_direction(self,player):
+    def get_player_distance_direction(self, player):
         """Calculate distance and normalized direction vector to player."""
         enemy_vec = pygame.math.Vector2(self.rect.center)
         player_vec = pygame.math.Vector2(player.rect.center)
@@ -89,18 +83,18 @@ class Enemy(Entity):
         return (distance, direction)
     
     def get_grid_position(self, pos):
-        """Convert pixel position to grid coordinates."""
-        return (int(pos[0] // TILESIZE), int(pos[1] // TILESIZE))
+        """Convert pixel position to grid coordinates (row, col)."""
+        col = int(pos[0] // TILESIZE)
+        row = int(pos[1] // TILESIZE)
+        return (row, col)
     
     def get_status(self, player):
         """Update enemy status based on distance to player."""
         distance = self.get_player_distance_direction(player)[0]
         
         if distance <= self.attack_radius and self.can_attack == True:
-            # Reset animation when transitioning to attack
             if self.status != 'attack':
                 self.frame_index = 0
-                
             self.status = 'attack'
         elif distance <= self.notice_radius:
             self.status = 'move'
@@ -109,59 +103,81 @@ class Enemy(Entity):
     
     def actions(self, player):
         """Execute behavior based on current status."""
+        distance = self.get_player_distance_direction(player)[0]
+        
         if self.status == 'attack':
             self.attack_time = pygame.time.get_ticks()
             self.damage_player(self.attack_damage, self.attack_type)
             self.attack_sound.play()
+            self.path = []
+            self.direction = pygame.math.Vector2(0, 0)
             
         elif self.status == 'move':
-            # Update path periodically (every 60 frames)
+            # Double-check distance - if out of range, stop immediately
+            if distance > self.notice_radius:
+                self.path = []
+                self.direction = pygame.math.Vector2(0, 0)
+                return
+            
+            # Update path periodically OR if path is empty/invalid
             self.path_update_cooldown += 1
-            if self.path_update_cooldown >= 60:
+            should_update_path = (
+                self.path_update_cooldown >= 60 or
+                not self.path or
+                len(self.path) == 0
+            )
+            
+            if should_update_path:
                 self.path_update_cooldown = 0
                 
-                # Only calculate path if player is within notice radius
-                distance = self.get_player_distance_direction(player)[0]
-                if distance <= self.notice_radius:
-                    # Get grid positions
-                    start = self.get_grid_position(self.rect.center)
-                    goal = self.get_grid_position(player.rect.center)
+                # Get grid positions
+                start = self.get_grid_position(self.rect.center)
+                goal = self.get_grid_position(player.rect.center)
+                
+                # Validate grid positions
+                grid = self.pathfinding_grid
+                if (0 <= start[1] < len(grid[0]) and
+                    0 <= start[0] < len(grid) and
+                    0 <= goal[1] < len(grid[0]) and
+                    0 <= goal[0] < len(grid)):
                     
-                    # Validate grid positions
-                    grid = self.pathfinding_grid
-                    if (0 <= start[0] < len(grid[0]) and 
-                        0 <= start[1] < len(grid) and 
-                        0 <= goal[0] < len(grid[0]) and 
-                        0 <= goal[1] < len(grid)):
-                        
-                        # Compute path
-                        self.path = astar(grid, start, goal)
-                        
-                        # Validate path: check if all steps are walkable
-                        if self.path:
-                            valid_path = True
-                            for step in self.path:
-                                if not (0 <= step[0] < len(grid[0]) and 0 <= step[1] < len(grid)) or not grid[step[1]][step[0]]:
-                                    valid_path = False
-                                    break
-                            if not valid_path:
-                                self.path = []  # Invalidate path
+                    # Compute path - astar expects (x, y) format
+                    start_astar = (start[1], start[0])
+                    goal_astar = (goal[1], goal[0])
+                    self.path = astar(grid, start_astar, goal_astar)
+                    
+                    # Validate path
+                    if self.path:
+                        valid_path = True
+                        for step in self.path:
+                            col, row = step
+                            if not (0 <= col < len(grid[0]) and 0 <= row < len(grid)) or not grid[row][col]:
+                                valid_path = False
+                                break
+                        if not valid_path:
+                            self.path = []
             
             # Follow the path
-            if self.path:
+            if self.path and len(self.path) > 0:
                 next_step = self.path[0]
                 next_pixel = (next_step[0] * TILESIZE + TILESIZE // 2, 
-                              next_step[1] * TILESIZE + TILESIZE // 2)
-                direction = pygame.math.Vector2(next_pixel) - self.rect.center
+                            next_step[1] * TILESIZE + TILESIZE // 2)
+                direction = pygame.math.Vector2(next_pixel) - pygame.math.Vector2(self.rect.center)
                 
-                # Remove step when close
-                if direction.magnitude() < 5:
+                if direction.magnitude() < 10:
                     self.path.pop(0)
+                    if len(self.path) == 0:
+                        self.direction = self.get_player_distance_direction(player)[1]
                 else:
-                    self.direction = direction.normalize()
+                    if direction.magnitude() > 0:
+                        self.direction = direction.normalize()
             else:
                 # Fallback to direct movement
                 self.direction = self.get_player_distance_direction(player)[1]
+        
+        else:  # idle
+            self.path = []
+            self.direction = pygame.math.Vector2(0, 0)
     
     def animate(self):
         """Update animation frame and apply visual effects."""
@@ -169,16 +185,13 @@ class Enemy(Entity):
         self.frame_index += self.animation_speed
 
         if self.frame_index >= len(self.animations[self.status]):
-            # Disable attack flag after attack animation completes
             if self.status == 'attack':
                 self.can_attack = False
-            
             self.frame_index = 0
             
         self.image = animation[int(self.frame_index)]
         self.rect = self.image.get_rect(center = self.hitbox.center)
         
-        # Flicker effect during invulnerability
         if not self.vulnerable:
             alpha = self.wave_value()
             self.image.set_alpha(alpha)
@@ -226,16 +239,13 @@ class Enemy(Entity):
     
     def move(self, speed):
         """Move entity with collision detection and normalization."""
-        # Normalize diagonal movement to prevent faster speed
         if self.direction.magnitude() != 0:
             self.direction = self.direction.normalize()
 
-        # Predict collision
         predicted_hitbox = self.hitbox.copy()
         predicted_hitbox.x += self.direction.x * speed
         predicted_hitbox.y += self.direction.y * speed
         
-        # Check for collisions
         collision = False
         for sprite in self.obstacle_sprites:
             if sprite.hitbox.colliderect(predicted_hitbox):
@@ -243,24 +253,20 @@ class Enemy(Entity):
                 break
         
         if not collision:
-            # Apply movement
             self.hitbox.x += self.direction.x * speed
             self.collision('horizontal')
             self.hitbox.y += self.direction.y * speed
             self.collision('vertical')
             self.rect.center = self.hitbox.center
         else:
-            # Try to adjust direction
             adjusted = False
             for angle in [30, -30, 60, -60]:
-                # Rotate direction
                 rad_angle = math.radians(angle)
                 new_direction = pygame.math.Vector2(
                     self.direction.x * math.cos(rad_angle) - self.direction.y * math.sin(rad_angle),
                     self.direction.x * math.sin(rad_angle) + self.direction.y * math.cos(rad_angle)
                 )
                 
-                # Check adjusted movement
                 adjusted_hitbox = self.hitbox.copy()
                 adjusted_hitbox.x += new_direction.x * speed
                 adjusted_hitbox.y += new_direction.y * speed
@@ -280,7 +286,6 @@ class Enemy(Entity):
                     break
             
             if not adjusted:
-                # Fallback to collision handling
                 self.hitbox.x += self.direction.x * speed
                 self.collision('horizontal')
                 self.hitbox.y += self.direction.y * speed

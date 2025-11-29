@@ -8,7 +8,7 @@ class Player(Entity):
     def __init__(self, pos, groups, obstacle_sprites, create_attack, destroy_attack, create_magic):
         super().__init__(groups)
         
-        self.image = pygame.image.load('graphics/test/player.png').convert_alpha()
+        self.image = pygame.image.load('graphics/player/down_idle/idle_down.png').convert_alpha()
         self.rect = self.image.get_rect(topleft = pos)
         self.hitbox = self.rect.inflate(-6 , HITBOX_OFFSET['player'])
         

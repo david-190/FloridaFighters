@@ -20,10 +20,10 @@ class AnimationPlayer:
             'thunder': import_folder('graphics/particles/thunder'),
  
             # Enemy death effects
-            'squid': import_folder('graphics/particles/smoke_orange'),
+            'eye': import_folder('graphics/particles/smoke_orange'),
             'raccoon': import_folder('graphics/particles/raccoon'),
-            'spirit': import_folder('graphics/particles/nova'),
-            'bamboo': import_folder('graphics/particles/bamboo'),
+            'squirrel': import_folder('graphics/particles/nova'),
+            'owl': import_folder('graphics/particles/owl'),
             
             # Leaf particles with mirrored variations
             'leaf': (

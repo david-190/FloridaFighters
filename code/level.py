@@ -92,13 +92,13 @@ class Level():
                             else:
                                 # Map entity IDs to monster types
                                 if col == '390':
-                                    monster_name = 'bamboo'
+                                    monster_name = 'owl'
                                 elif col == '391':
-                                    monster_name = 'spirit'
+                                    monster_name = 'squirrel'
                                 elif col == '392':
                                     monster_name = 'raccoon'
                                 else:
-                                    monster_name = 'squid'
+                                    monster_name = 'eye'
                                 
                                 enemy = Enemy(monster_name = monster_name, 
                                         pos = (x,y), 
@@ -109,11 +109,10 @@ class Level():
                                         add_exp = self.add_exp,
                                         pathfinding_grid = self.pathfinding_grid)
                                 enemy.level = self  # Set level reference
-                        # Mark obstacles in pathfinding grid (added)
-                        if style in ['boundary', 'object']:
-                            # Ensure grid indices are within bounds
+                        # Mark obstacles in pathfinding grid
+                        if style in ['boundary', 'object', 'grass']:
                             if 0 <= row_index < len(self.pathfinding_grid) and 0 <= col_index < len(self.pathfinding_grid[0]):
-                                self.pathfinding_grid[len(self.pathfinding_grid) - row_index - 1][col_index] = False
+                                self.pathfinding_grid[row_index][col_index] = False
         
     def create_attack(self):
         """Instantiate player's weapon sprite."""
