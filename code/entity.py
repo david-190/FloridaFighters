@@ -30,16 +30,8 @@ class Entity(pygame.sprite.Sprite):
     
     def collision(self,direction):
         """Handle collision detection and resolution for specified axis."""
-        # Retrieve nearby obstacles from QuadTree
-        nearby_obstacles = []
-        if hasattr(self, 'level') and hasattr(self.level, 'quadtree'):
-            self.level.quadtree.retrieve(nearby_obstacles, self.hitbox)
-        else:
-            # Fallback to full obstacle list
-            nearby_obstacles = self.obstacle_sprites
-        
         if direction == 'horizontal':
-            for sprite in nearby_obstacles:
+            for sprite in self.obstacle_sprites:
                 if sprite.hitbox.colliderect(self.hitbox):
                     if self.direction.x > 0:
                         self.hitbox.right = sprite.hitbox.left
@@ -47,7 +39,7 @@ class Entity(pygame.sprite.Sprite):
                         self.hitbox.left = sprite.hitbox.right
                     
         if direction == 'vertical':
-            for sprite in nearby_obstacles:
+            for sprite in self.obstacle_sprites:
                 if sprite.hitbox.colliderect(self.hitbox):
                     if self.direction.y < 0:
                         self.hitbox.top = sprite.hitbox.bottom

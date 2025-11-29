@@ -258,7 +258,7 @@ class Enemy(Entity):
                 new_direction = pygame.math.Vector2(
                     self.direction.x * math.cos(rad_angle) - self.direction.y * math.sin(rad_angle),
                     self.direction.x * math.sin(rad_angle) + self.direction.y * math.cos(rad_angle)
-                ).normalize()
+                )
                 
                 # Check adjusted movement
                 adjusted_hitbox = self.hitbox.copy()

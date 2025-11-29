@@ -11,7 +11,6 @@ from enemy import Enemy
 from particles import AnimationPlayer
 from magic import MagicPlayer
 from upgrade import Upgrade
-from quadtree import QuadTree  # Import QuadTree
 
 class Level():
     
@@ -28,8 +27,6 @@ class Level():
         self.attack_sprites = pygame.sprite.Group()
         self.attackable_sprites = pygame.sprite.Group()
         
-        # Create QuadTree for obstacles
-        self.quadtree = QuadTree(0, pygame.Rect(0, 0, 1920 * 2, 1080 * 2))  # Adjust bounds as needed
         
         self.create_map()
 
@@ -73,18 +70,15 @@ class Level():
 
                         if style == 'boundary':
                             tile = Tile(pos = (x, y), groups = [self.obstacle_sprites], sprite_type = 'invisible')
-                            self.quadtree.insert(tile)  # Add to QuadTree
                         
                         if style == 'grass':
                             random_grass_image = choice(graphics['grass'])
                             tile = Tile(pos = (x, y), groups = [self.visible_sprites, self.obstacle_sprites, self.attackable_sprites], sprite_type = 'grass', surface = random_grass_image)
-                            self.quadtree.insert(tile)  # Add to QuadTree
                         
                         if style == 'object':
                             # Use column value as index to select correct graphic
                             surf = graphics['object'][int(col)]
                             tile = Tile(pos = (x, y), groups = [self.visible_sprites, self.obstacle_sprites], sprite_type = 'object', surface = surf)
-                            self.quadtree.insert(tile)  # Add to QuadTree
                         
                         if style == 'entities':
                             if col == '394':
@@ -147,10 +141,6 @@ class Level():
             collision_sprites = pygame.sprite.spritecollide(attack_sprite, self.attackable_sprites, False)
             for sprite in collision_sprites:
                 if sprite.sprite_type == 'grass':
-                    # Remove from QuadTree
-                    # Note: QuadTree doesn't support removal, so we'll rebuild it
-                    self.rebuild_quadtree()
-                    
                     # Get grid position
                     x = sprite.rect.centerx // TILESIZE
                     y = sprite.rect.centery // TILESIZE
@@ -164,11 +154,6 @@ class Level():
                     self.animation_player.create_grass_particles(pos)
                     sprite.kill()
     
-    def rebuild_quadtree(self):
-        """Rebuild the QuadTree from obstacle sprites."""
-        self.quadtree.clear()
-        for sprite in self.obstacle_sprites:
-            self.quadtree.insert(sprite)
     
     def player_attack_logic(self):
         """Check for collisions between attack sprites and attackable entities."""
@@ -232,9 +217,6 @@ class Level():
             self.visible_sprites.enemy_update(self.player)
             self.player_attack_logic()
 
-        # Draw QuadTree in debug mode
-        if DEBUG_MODE:
-            self.quadtree.draw(self.display_surface)
         
 class YSortCameraGroup(pygame.sprite.Group):
     """Custom sprite group with camera offset and Y-axis sorting for depth."""
