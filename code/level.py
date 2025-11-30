@@ -1,3 +1,4 @@
+import sys
 import pygame
 from settings import TILESIZE, DEBUG_MODE
 from tile import Tile
@@ -7,16 +8,20 @@ from random import choice, randint
 from weapon import Weapon
 from ui import UI
 from death_screen import DeathScreen
+from game_complete_screen import GameCompleteScreen
 from enemy import Enemy
 from particles import AnimationPlayer
 from magic import MagicPlayer
 from upgrade import Upgrade
+from spatial_hash import SpatialHashGrid
+
 
 class Level():
     
-    def __init__(self):
+    def __init__(self, input_manager=None):
         self.display_surface = pygame.display.get_surface()
         self.game_paused = False 
+        self.input_manager = input_manager
         
         # Sprite groups for rendering and collision detection
         self.visible_sprites = YSortCameraGroup()
@@ -27,19 +32,23 @@ class Level():
         self.attack_sprites = pygame.sprite.Group()
         self.attackable_sprites = pygame.sprite.Group()
         
+        # === NEW: Spatial Hash Grid for optimized collision detection ===
+        self.spatial_grid = SpatialHashGrid(cell_size=TILESIZE * 3)
         
         self.create_map()
 
-        self.ui = UI()
-        self.upgrade = Upgrade(self.player)
+        self.ui = UI(self.input_manager)
+        self.upgrade = Upgrade(self.player, self.input_manager)
 
         self.death_screen = DeathScreen(self.display_surface)
         self.is_dead = False
+        self.game_complete_screen = GameCompleteScreen(self.display_surface)
+        self.game_complete = False
 
         self.animation_player = AnimationPlayer()
         self.magic_player = MagicPlayer(self.animation_player)
         
-        # Pathfinding grid (added)
+        # Pathfinding grid
         self.pathfinding_grid = None
     
     def create_map(self):
@@ -55,7 +64,7 @@ class Level():
             'object': import_folder('graphics/Objects')
         }
         
-        # Create pathfinding grid (added)
+        # Create pathfinding grid
         grid_width = len(layouts['boundary'][0])
         grid_height = len(layouts['boundary'])
         self.pathfinding_grid = [[True] * grid_width for _ in range(grid_height)]
@@ -64,7 +73,6 @@ class Level():
             for row_index, row in enumerate(layout):
                 for col_index, col in enumerate(row):
                     if col != '-1':
-                        # Convert grid coordinates to pixel positions
                         x = col_index * TILESIZE
                         y = row_index * TILESIZE
 
@@ -76,18 +84,20 @@ class Level():
                             tile = Tile(pos = (x, y), groups = [self.visible_sprites, self.obstacle_sprites, self.attackable_sprites], sprite_type = 'grass', surface = random_grass_image)
                         
                         if style == 'object':
-                            # Use column value as index to select correct graphic
                             surf = graphics['object'][int(col)]
                             tile = Tile(pos = (x, y), groups = [self.visible_sprites, self.obstacle_sprites], sprite_type = 'object', surface = surf)
                         
                         if style == 'entities':
                             if col == '394':
-                                self.player = Player(pos = (x, y), 
-                                                groups = [self.visible_sprites],           
-                                                obstacle_sprites = self.obstacle_sprites,
-                                                create_attack = self.create_attack,
-                                                destroy_attack = self.destroy_attack,
-                                                create_magic = self.create_magic)
+                                self.player = Player(
+                                    pos = (x, y),
+                                    groups = [self.visible_sprites],
+                                    obstacle_sprites = self.obstacle_sprites,
+                                    create_attack = self.create_attack,
+                                    destroy_attack = self.destroy_attack,
+                                    create_magic = self.create_magic,
+                                    input_manager = self.input_manager
+                                )
                                 self.player.level = self  # Set level reference
                             else:
                                 # Map entity IDs to monster types
@@ -109,6 +119,7 @@ class Level():
                                         add_exp = self.add_exp,
                                         pathfinding_grid = self.pathfinding_grid)
                                 enemy.level = self  # Set level reference
+                        
                         # Mark obstacles in pathfinding grid
                         if style in ['boundary', 'object', 'grass']:
                             if 0 <= row_index < len(self.pathfinding_grid) and 0 <= col_index < len(self.pathfinding_grid[0]):
@@ -136,23 +147,18 @@ class Level():
     def destroy_grass(self):
         """Remove grass when attacked and drop items."""
         for attack_sprite in self.attack_sprites:
-            # Find overlapping grass sprites
             collision_sprites = pygame.sprite.spritecollide(attack_sprite, self.attackable_sprites, False)
             for sprite in collision_sprites:
                 if sprite.sprite_type == 'grass':
-                    # Get grid position
                     x = sprite.rect.centerx // TILESIZE
                     y = sprite.rect.centery // TILESIZE
                     
-                    # Update pathfinding grid
                     if 0 <= y < len(self.pathfinding_grid) and 0 <= x < len(self.pathfinding_grid[0]):
                         self.pathfinding_grid[y][x] = True
                     
-                    # Create particles and items
                     pos = sprite.rect.center
                     self.animation_player.create_grass_particles(pos)
                     sprite.kill()
-    
     
     def player_attack_logic(self):
         """Check for collisions between attack sprites and attackable entities."""
@@ -163,7 +169,6 @@ class Level():
                 if collision_sprite:
                     for target_sprite in collision_sprite:
                         if target_sprite.sprite_type == 'grass':
-                            # Spawn particle effects and destroy grass
                             pos = target_sprite.rect.center
                             offset = pygame.math.Vector2(0,75)
                     
@@ -174,13 +179,15 @@ class Level():
                         else: 
                             target_sprite.get_damge(self.player, attack_sprite.sprite_type)
     
-    def damage_player(self, amount, attack_type):
+    def damage_player(self, amount, attack_type, source_pos=None):
         """Apply damage to player if not currently invulnerable."""
         if self.player.vulnerable:
             self.player.health -= amount
             self.player.vulnerable = False
             self.player.hurt_time = pygame.time.get_ticks()
             self.animation_player.create_particles(attack_type, self.player.rect.center, [self.visible_sprites])
+            if source_pos is not None:
+                self.player.apply_knockback(source_pos)
             
     def trigger_death_particles(self, pos, particle_type): 
         """Spawn particle effect at specified position."""
@@ -193,7 +200,61 @@ class Level():
     def toggle_menu(self):
         """Toggle pause state for upgrade menu."""
         self.game_paused = not self.game_paused
+        if self.game_paused and self.input_manager:
+            # Require the player to press the quit input while in the menu
+            self.input_manager.consume_quit_request()
+    
+    def _rebuild_spatial_grid(self):
+        """
+        Rebuild the spatial hash grid each frame.
         
+        Algorithm:
+        1. Clear the grid (O(1) - just clears dictionary)
+        2. Insert all obstacle sprites (O(n) where n = number of obstacles)
+        3. Grid is now ready for O(1) queries
+        
+        This happens every frame because sprites can move.
+        Cost is amortized across all collision queries in the frame.
+        """
+        self.spatial_grid.clear()
+        
+        # Insert all obstacles into spatial grid
+        for sprite in self.obstacle_sprites:
+            self.spatial_grid.insert(sprite)
+        
+        # Optionally insert enemies for enemy-enemy interactions
+        # Uncomment if you add enemy-enemy collision later:
+        # for sprite in self.visible_sprites:
+        #     if hasattr(sprite, 'sprite_type') and sprite.sprite_type == 'enemy':
+        #         self.spatial_grid.insert(sprite)
+        
+    def _draw_enemy_paths_debug(self):
+        """Render enemy A* paths when debug mode is enabled."""
+        offset = self.visible_sprites.offset
+        for sprite in self.visible_sprites:
+            if getattr(sprite, 'sprite_type', None) != 'enemy':
+                continue
+
+            path = getattr(sprite, 'path', None)
+            if not path:
+                continue
+
+            points = []
+            for col, row in path:
+                px = col * TILESIZE + TILESIZE // 2
+                py = row * TILESIZE + TILESIZE // 2
+                screen_pos = pygame.math.Vector2(px, py) - offset
+                points.append((int(screen_pos.x), int(screen_pos.y)))
+
+            if not points:
+                continue
+
+            if len(points) > 1:
+                pygame.draw.lines(self.display_surface, (255, 215, 0), False, points, 2)
+
+            for point in points:
+                pygame.draw.circle(self.display_surface, (255, 140, 0), point, 4)
+
     def run(self):
         """Main level update and render loop."""
         # Check for player death
@@ -204,17 +265,55 @@ class Level():
             self.death_screen.draw()
             return
 
+        if not self.game_complete:
+            self._check_game_completion()
+
+        if self.game_complete:
+            self.game_complete_screen.draw()
+            if self.input_manager and self.input_manager.consume_quit_request():
+                pygame.quit()
+                sys.exit()
+            return
+
+        # === NEW: Rebuild spatial grid each frame ===
+        self._rebuild_spatial_grid()
+
         # Render sprites and UI
         self.visible_sprites.custom_draw(self.player)
         self.ui.display(self.player)
+        
+        # Debug: Visualize spatial grid (only if DEBUG_MODE is True)
+        if DEBUG_MODE:
+            self.spatial_grid.visualize_debug(self.display_surface, self.visible_sprites.offset)
+
+            # Show stats
+            stats = self.spatial_grid.get_stats()
+            from debug import debug
+            debug(f"Spatial Grid - Sprites: {stats['total_sprites']}, Cells: {stats['total_cells']}", y=40)
+            debug(f"Max/Cell: {stats['max_sprites_per_cell']}, Queries: {stats['queries_this_frame']}", y=70)
+            self._draw_enemy_paths_debug()
                
         if self.game_paused:
-            self.upgrade.display() 
+            self.upgrade.display()
+            if self.upgrade.consume_quit_request():
+                pygame.quit()
+                sys.exit()
         else:
             # Update game state only when not paused
             self.visible_sprites.update()
             self.visible_sprites.enemy_update(self.player)
             self.player_attack_logic()
+            self._check_game_completion()
+
+    def _check_game_completion(self):
+        if self.game_complete:
+            return
+
+        for sprite in self.visible_sprites:
+            if getattr(sprite, 'sprite_type', None) == 'enemy':
+                return
+
+        self.game_complete = True
 
         
 class YSortCameraGroup(pygame.sprite.Group):
@@ -224,10 +323,8 @@ class YSortCameraGroup(pygame.sprite.Group):
        super().__init__()
        
        self.display_surface = pygame.display.get_surface()
-       # Calculate screen center for camera positioning
        self.half_width = self.display_surface.get_size()[0] // 2
        self.half_height = self.display_surface.get_size()[1] // 2
-       # Offset vector keeps player centered on screen
        self.offset = pygame.math.Vector2()
        
        self.floor_surface = pygame.image.load('graphics/tilemap/ground.png').convert()
@@ -235,15 +332,12 @@ class YSortCameraGroup(pygame.sprite.Group):
        
     def custom_draw(self, player):
         """Render all sprites with camera offset centered on player."""
-        # Calculate offset to keep player centered
         self.offset.x = player.rect.centerx - self.half_width
         self.offset.y = player.rect.centery - self.half_height
        
-        # Draw floor with offset
         offset_floor = self.floor_rect.topleft - self.offset
         self.display_surface.blit(self.floor_surface, offset_floor)
         
-        # Draw sprites sorted by Y position for depth illusion
         for sprite in sorted(self.sprites(), key = lambda sprite: sprite.rect.centery):
             offset_pos = sprite.rect.topleft - self.offset
             self.display_surface.blit(sprite.image, offset_pos)

@@ -25,6 +25,7 @@ class Enemy(Entity):
         self.monster_name = monster_name
         monster_info = monster_data[self.monster_name]
         self.health = monster_info['health']
+        self.max_health = self.health
         self.exp = monster_info['exp']
         self.speed = monster_info['speed']
         self.attack_damage = monster_info['damage']
@@ -32,6 +33,9 @@ class Enemy(Entity):
         self.attack_radius = monster_info['attack_radius']
         self.notice_radius = monster_info['notice_radius']
         self.attack_type = monster_info['attack_type']
+        
+        # Finite state machine state
+        self.state = 'idle'
         
         # Combat timers
         self.can_attack = True
@@ -60,6 +64,10 @@ class Enemy(Entity):
         # Pathfinding attributes
         self.path = []
         self.path_update_cooldown = 0
+
+        # Knockback / physics impulse state
+        self.knockback_velocity = pygame.math.Vector2()
+        self.knockback_decay = 0.82
     
     def import_graphics(self, name):
         """Load all animation frames for the specified monster type."""
@@ -88,38 +96,44 @@ class Enemy(Entity):
         row = int(pos[1] // TILESIZE)
         return (row, col)
     
-    def get_status(self, player):
-        """Update enemy status based on distance to player."""
-        distance = self.get_player_distance_direction(player)[0]
-        
-        if distance <= self.attack_radius and self.can_attack == True:
+    def update_state(self, player):
+        """Finite state machine evaluating enemy behavior."""
+        distance, _ = self.get_player_distance_direction(player)
+        low_health = self.health <= self.max_health * 0.3
+
+        previous_state = self.state
+
+        if distance <= self.attack_radius and self.can_attack:
+            self.state = 'attack'
+        elif low_health and distance < self.notice_radius * 0.75:
+            self.state = 'flee'
+        elif distance <= self.notice_radius:
+            self.state = 'pursue'
+        else:
+            self.state = 'idle'
+
+        if self.state == 'attack':
             if self.status != 'attack':
                 self.frame_index = 0
             self.status = 'attack'
-        elif distance <= self.notice_radius:
+        elif self.state in ('pursue', 'flee'):
             self.status = 'move'
-        else: 
+        else:
             self.status = 'idle'
     
     def actions(self, player):
         """Execute behavior based on current status."""
         distance = self.get_player_distance_direction(player)[0]
         
-        if self.status == 'attack':
+        if self.state == 'attack':
             self.attack_time = pygame.time.get_ticks()
-            self.damage_player(self.attack_damage, self.attack_type)
+            self.damage_player(self.attack_damage, self.attack_type, self.rect.center)
             self.attack_sound.play()
             self.path = []
             self.direction = pygame.math.Vector2(0, 0)
             
-        elif self.status == 'move':
-            # Double-check distance - if out of range, stop immediately
-            if distance > self.notice_radius:
-                self.path = []
-                self.direction = pygame.math.Vector2(0, 0)
-                return
-            
-            # Update path periodically OR if path is empty/invalid
+        elif self.state == 'pursue':
+            # Update path periodically
             self.path_update_cooldown += 1
             should_update_path = (
                 self.path_update_cooldown >= 60 or
@@ -141,7 +155,7 @@ class Enemy(Entity):
                     0 <= goal[1] < len(grid[0]) and
                     0 <= goal[0] < len(grid)):
                     
-                    # Compute path - astar expects (x, y) format
+                    # Compute path
                     start_astar = (start[1], start[0])
                     goal_astar = (goal[1], goal[0])
                     self.path = astar(grid, start_astar, goal_astar)
@@ -175,6 +189,13 @@ class Enemy(Entity):
                 # Fallback to direct movement
                 self.direction = self.get_player_distance_direction(player)[1]
         
+        elif self.state == 'flee':
+            self.path = []
+            if distance > 0:
+                self.direction = (pygame.math.Vector2(self.rect.center) - pygame.math.Vector2(player.rect.center)).normalize()
+            else:
+                self.direction = pygame.math.Vector2(0, 0)
+
         else:  # idle
             self.path = []
             self.direction = pygame.math.Vector2(0, 0)
@@ -209,21 +230,28 @@ class Enemy(Entity):
         if not self.vulnerable:
             if current_time - self.hit_time >= self.invincibility_duration:
                 self.vulnerable = True
-            
+    
     def get_damge(self, player, attack_type):
         """Apply damage to enemy if not currently invulnerable."""
-        if self.vulnerable:  
+        if self.vulnerable:
             self.hit_sound.play()
             self.direction = self.get_player_distance_direction(player)[1]
-            
+
             if attack_type == 'weapon':
                 self.health -= player.get_full_weapon_damage()
             else:
                 self.health -= player.get_full_magic_damage()
-            
+
+            # Apply knockback impulse opposite to the attacker
+            knockback_dir = pygame.math.Vector2(self.rect.center) - pygame.math.Vector2(player.rect.center)
+            if knockback_dir.length() > 0:
+                knockback_dir = knockback_dir.normalize()
+                strength = 12 / max(1, self.resitance)
+                self.knockback_velocity = knockback_dir * strength
+
             self.hit_time = pygame.time.get_ticks()
             self.vulnerable = False
-        
+
     def check_death(self):
         """Remove enemy and trigger effects if health depleted."""
         if self.health <= 0:
@@ -231,34 +259,86 @@ class Enemy(Entity):
             self.trigger_death_particles(self.rect.center, self.monster_name)
             self.add_exp(self.exp)
             self.death_sound.play()
-    
+
     def hit_reaction(self):
-        """Apply knockback when enemy is hit."""
-        if not self.vulnerable:
-            self.direction *= -self.resitance
+        """Apply decaying knockback impulse when recently hit."""
+        if self.knockback_velocity.length_squared() <= 0.05:
+            self.knockback_velocity.update(0, 0)
+            return False
+
+        # Move according to knockback velocity while respecting collisions
+        movement = self.knockback_velocity
+        original_direction = self.direction.copy()
+        temp_direction = pygame.math.Vector2()
+        temp_direction.x = 1 if movement.x > 0 else -1 if movement.x < 0 else 0
+        temp_direction.y = 1 if movement.y > 0 else -1 if movement.y < 0 else 0
+
+        # Horizontal component
+        if movement.x != 0:
+            self.hitbox.x += movement.x
+            self.direction = temp_direction
+            self.collision('horizontal')
+
+        # Vertical component
+        if movement.y != 0:
+            self.hitbox.y += movement.y
+            self.direction = temp_direction
+            self.collision('vertical')
+
+        self.rect.center = self.hitbox.center
+        self.direction = original_direction
+
+        # Decay impulse for next frame
+        self.knockback_velocity *= self.knockback_decay
+        if self.knockback_velocity.length_squared() <= 0.05:
+            self.knockback_velocity.update(0, 0)
+
+        return True
     
     def move(self, speed):
-        """Move entity with collision detection and normalization."""
+        """
+        Move entity with collision detection using Spatial Hash Grid.
+        
+        OPTIMIZATION: Instead of checking ALL obstacles, we only check
+        nearby obstacles using the spatial hash grid.
+        
+        Algorithm:
+        1. Normalize direction
+        2. Calculate predicted position
+        3. Query spatial grid for nearby obstacles (O(1) average)
+        4. Check collision only with nearby obstacles
+        5. If collision, try angled adjustments
+        6. Update position
+        
+        Performance: O(1) average case vs O(n) without spatial hash
+        """
         if self.direction.magnitude() != 0:
             self.direction = self.direction.normalize()
 
+        # Calculate predicted hitbox position
         predicted_hitbox = self.hitbox.copy()
         predicted_hitbox.x += self.direction.x * speed
         predicted_hitbox.y += self.direction.y * speed
         
+        # === OPTIMIZATION: Use spatial hash grid ===
+        nearby_obstacles = self.level.spatial_grid.query(predicted_hitbox)
+        
+        # Check collision with nearby obstacles only
         collision = False
-        for sprite in self.obstacle_sprites:
+        for sprite in nearby_obstacles:
             if sprite.hitbox.colliderect(predicted_hitbox):
                 collision = True
                 break
         
         if not collision:
+            # No collision - move normally
             self.hitbox.x += self.direction.x * speed
             self.collision('horizontal')
             self.hitbox.y += self.direction.y * speed
             self.collision('vertical')
             self.rect.center = self.hitbox.center
         else:
+            # Collision detected - try angled adjustments
             adjusted = False
             for angle in [30, -30, 60, -60]:
                 rad_angle = math.radians(angle)
@@ -271,13 +351,16 @@ class Enemy(Entity):
                 adjusted_hitbox.x += new_direction.x * speed
                 adjusted_hitbox.y += new_direction.y * speed
                 
-                collision = False
-                for sprite in self.obstacle_sprites:
+                # Query spatial grid for adjusted position
+                nearby_for_adjusted = self.level.spatial_grid.query(adjusted_hitbox)
+                
+                collision_adjusted = False
+                for sprite in nearby_for_adjusted:
                     if sprite.hitbox.colliderect(adjusted_hitbox):
-                        collision = True
+                        collision_adjusted = True
                         break
                 
-                if not collision:
+                if not collision_adjusted:
                     self.direction = new_direction
                     self.hitbox.x += self.direction.x * speed
                     self.hitbox.y += self.direction.y * speed
@@ -286,6 +369,7 @@ class Enemy(Entity):
                     break
             
             if not adjusted:
+                # Couldn't find angle - move with standard collision
                 self.hitbox.x += self.direction.x * speed
                 self.collision('horizontal')
                 self.hitbox.y += self.direction.y * speed
@@ -294,13 +378,14 @@ class Enemy(Entity):
     
     def update(self):
         """Update enemy state each frame."""
-        self.hit_reaction()
-        self.move(self.speed)
+        knockback_active = self.hit_reaction()
+        if not knockback_active:
+            self.move(self.speed)
         self.cooldown()
         self.animate()
         self.check_death()
     
     def enemy_update(self, player):
         """Update AI behavior based on player position."""
-        self.get_status(player = player)
+        self.update_state(player)
         self.actions(player)

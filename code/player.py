@@ -5,7 +5,7 @@ from entity import *
 
 class Player(Entity):
     
-    def __init__(self, pos, groups, obstacle_sprites, create_attack, destroy_attack, create_magic):
+    def __init__(self, pos, groups, obstacle_sprites, create_attack, destroy_attack, create_magic, input_manager=None):
         super().__init__(groups)
         
         self.image = pygame.image.load('graphics/player/down_idle/idle_down.png').convert_alpha()
@@ -54,7 +54,14 @@ class Player(Entity):
         
         self.weapon_attack_sound = pygame.mixer.Sound('audio/sword.wav')
         self.weapon_attack_sound.set_volume(0.4)
-              
+        
+        # Unified input provider
+        self.input_manager = input_manager
+        
+        # Knockback physics state
+        self.knockback_velocity = pygame.math.Vector2()
+        self.knockback_decay = 0.85
+        
     def import_player_assets(self):
         """Load all player animation frames."""
         character_path = 'graphics/player/'
@@ -67,69 +74,11 @@ class Player(Entity):
             self.animations[animation] = import_folder(full_path)
         
     def input(self):
-        """Handle player keyboard input for movement, attacks, and switching."""
-        if not self.attacking:
-            keys_pressed = pygame.key.get_pressed()
-            
-            # Movement input
-            if keys_pressed[pygame.K_w]:
-                self.direction.y = -1
-                self.status = 'up'
-            elif keys_pressed[pygame.K_s]:
-                self.direction.y = +1
-                self.status = 'down'
-            else:
-                self.direction.y = 0 
-                    
-            if keys_pressed[pygame.K_a]:
-                self.direction.x = -1
-                self.status = 'left'  
-            elif keys_pressed[pygame.K_d]:
-                self.direction.x = +1
-                self.status = 'right'
-            else: 
-                self.direction.x = 0
-            
-            # Weapon attack
-            if keys_pressed[pygame.K_h]:
-                self.attacking = True 
-                self.attack_time = pygame.time.get_ticks()
-                self.create_attack()
-                self.weapon_attack_sound.play()
-                
-            # Magic attack
-            if keys_pressed[pygame.K_j]:
-                self.attacking = True 
-                self.attack_time = pygame.time.get_ticks()
-                
-                style = list(magic_data.keys())[self.magic_index]
-                strength = list(magic_data.values())[self.magic_index]["strength"]
-                cost = list(magic_data.values())[self.magic_index]["cost"]
-                self.create_magic(style, strength, cost)
-                
-            # Weapon switching
-            if keys_pressed[pygame.K_k] and self.can_switch_weapon:
-                self.can_switch_weapon = False
-                self.weapon_switch_time = pygame.time.get_ticks()
-                
-                if self.weapon_index < len(list(weapon_data.keys())) - 1:
-                    self.weapon_index += 1
-                else: 
-                    self.weapon_index = 0
-                    
-                self.weapon = list(weapon_data.keys())[self.weapon_index]
-                
-            # Magic switching
-            if keys_pressed[pygame.K_l] and self.can_switch_magic:
-                self.can_switch_magic = False 
-                self.magic_switch_time = pygame.time.get_ticks()
-                
-                if self.magic_index < len(list(magic_data.keys())) - 1:
-                    self.magic_index += 1
-                else: 
-                    self.magic_index = 0
-                    
-                self.magic = list(magic_data.keys())[self.magic_index]
+        """Handle player input from keyboard or InputManager."""
+        if self.input_manager:
+            self._input_from_manager()
+        else:
+            self._input_from_keyboard()
         
     def get_status(self):
         """Update player status string based on movement and action state."""
@@ -221,12 +170,157 @@ class Player(Entity):
             self.energy += 0.01 * self.stats['magic']
         else:
             self.energy = self.stats['energy']
+
+    def _input_from_keyboard(self):
+        if self.attacking:
+            return
+
+        keys_pressed = pygame.key.get_pressed()
+
+        # Movement input
+        if keys_pressed[pygame.K_w]:
+            self.direction.y = -1
+            self.status = 'up'
+        elif keys_pressed[pygame.K_s]:
+            self.direction.y = +1
+            self.status = 'down'
+        else:
+            self.direction.y = 0 
+
+        if keys_pressed[pygame.K_a]:
+            self.direction.x = -1
+            self.status = 'left'  
+        elif keys_pressed[pygame.K_d]:
+            self.direction.x = +1
+            self.status = 'right'
+        else: 
+            self.direction.x = 0
+
+        # Weapon attack
+        if keys_pressed[pygame.K_h]:
+            self._start_weapon_attack()
+
+        # Magic attack
+        if keys_pressed[pygame.K_j]:
+            self._start_magic_attack()
+
+        # Weapon switching
+        if keys_pressed[pygame.K_k] and self.can_switch_weapon:
+            self._cycle_weapon()
+
+        # Magic switching
+        if keys_pressed[pygame.K_l] and self.can_switch_magic:
+            self._cycle_magic()
+
+    def _input_from_manager(self):
+        move = self.input_manager.get_move_vector()
+        if not self.attacking:
+            self.direction.xy = move.xy
+            self._update_status_from_vector(move)
+        else:
+            self.direction.update(0, 0)
+
+        if not self.attacking and self.input_manager.attack_active:
+            self._start_weapon_attack()
+
+        if not self.attacking and self.input_manager.magic_active:
+            self._start_magic_attack()
+
+        if self.input_manager.consume_weapon_switch() and self.can_switch_weapon:
+            self._cycle_weapon()
+
+        if self.input_manager.consume_magic_switch() and self.can_switch_magic:
+            self._cycle_magic()
+
+    def _start_weapon_attack(self):
+        self.attacking = True 
+        self.attack_time = pygame.time.get_ticks()
+        self.create_attack()
+        self.weapon_attack_sound.play()
+
+    def _start_magic_attack(self):
+        self.attacking = True 
+        self.attack_time = pygame.time.get_ticks()
+        style = list(magic_data.keys())[self.magic_index]
+        strength = list(magic_data.values())[self.magic_index]["strength"]
+        cost = list(magic_data.values())[self.magic_index]["cost"]
+        self.create_magic(style, strength, cost)
+
+    def _cycle_weapon(self):
+        self.can_switch_weapon = False
+        self.weapon_switch_time = pygame.time.get_ticks()
+        if self.weapon_index < len(list(weapon_data.keys())) - 1:
+            self.weapon_index += 1
+        else: 
+            self.weapon_index = 0
+        self.weapon = list(weapon_data.keys())[self.weapon_index]
+
+    def _cycle_magic(self):
+        self.can_switch_magic = False 
+        self.magic_switch_time = pygame.time.get_ticks()
+        if self.magic_index < len(list(magic_data.keys())) - 1:
+            self.magic_index += 1
+        else: 
+            self.magic_index = 0
+        self.magic = list(magic_data.keys())[self.magic_index]
+
+    def _update_status_from_vector(self, vector):
+        if vector.x == 0 and vector.y == 0:
+            return
+        if abs(vector.x) > abs(vector.y):
+            self.status = 'right' if vector.x > 0 else 'left'
+        else:
+            self.status = 'down' if vector.y > 0 else 'up'
+    
+    def apply_knockback(self, source_position, strength=12):
+        """Receive an impulse pushing the player away from the source position."""
+        direction = pygame.math.Vector2(self.rect.center) - pygame.math.Vector2(source_position)
+        if direction.length() == 0:
+            return
+        self.knockback_velocity = direction.normalize() * strength
+    
+    def _apply_knockback_motion(self):
+        """Integrate current knockback velocity with collision resolution."""
+        if self.knockback_velocity.length_squared() <= 0.05:
+            self.knockback_velocity.update(0, 0)
+            return False
+
+        displacement = self.knockback_velocity
+        original_direction = self.direction.copy()
+        temp_direction = pygame.math.Vector2(
+            1 if displacement.x > 0 else -1 if displacement.x < 0 else 0,
+            1 if displacement.y > 0 else -1 if displacement.y < 0 else 0
+        )
+
+        if displacement.x != 0:
+            self.hitbox.x += displacement.x
+            self.direction.x = temp_direction.x
+            self.collision('horizontal')
+
+        if displacement.y != 0:
+            self.hitbox.y += displacement.y
+            self.direction.y = temp_direction.y
+            self.collision('vertical')
+
+        self.rect.center = self.hitbox.center
+        self.direction = original_direction
+
+        self.knockback_velocity *= self.knockback_decay
+        if self.knockback_velocity.length_squared() <= 0.05:
+            self.knockback_velocity.update(0, 0)
+
+        return True
     
     def update(self):
         """Update player state each frame."""
-        self.input()
+        knockback_active = self._apply_knockback_motion()
+        if not knockback_active:
+            self.input()
+        else:
+            self.direction.update(0, 0)
         self.cooldowns()
         self.get_status()
         self.animate()
-        self.move(self.stats['speed'])
+        if not knockback_active:
+            self.move(self.stats['speed'])
         self.energy_recovery()

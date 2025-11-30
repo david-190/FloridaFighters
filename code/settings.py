@@ -36,7 +36,7 @@ BAR_COLOR_SELECTED = '#111111'
 UPGRADE_BG_COLOR_SELECTED = '#EEEEEE'
 
 # Debug mode
-DEBUG_MODE = False  # Set to False to disable debug visuals
+DEBUG_MODE = False 
 
 # Weapon statistics
 weapon_data = {

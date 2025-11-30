@@ -3,9 +3,10 @@ from settings import *
 
 class Upgrade:
     
-    def __init__(self,player):
+    def __init__(self,player, input_manager=None):
         self.display_surface = pygame.display.get_surface()
         self.player = player
+        self.input_manager = input_manager
         self.attribute_nr = len(player.stats)
         self.attribute_names = list(player.stats.keys())
         self.max_values = list(player.max_stats.values())
@@ -20,26 +21,44 @@ class Upgrade:
         self.selection_index = 0
         self.selection_time = None
         self.can_move = True
+        self.quit_requested = False
         
     def input(self):
         """Handle upgrade menu navigation and selection."""
         keys = pygame.key.get_pressed()
-        
+        nav_input = 0
+        confirm_pressed = keys[pygame.K_SPACE]
+        quit_input = keys[pygame.K_q]
+
+        if keys[pygame.K_RIGHT]:
+            nav_input = 1
+        elif keys[pygame.K_LEFT]:
+            nav_input = -1
+
+        if self.input_manager:
+            nav_from_manager = self.input_manager.consume_menu_nav()
+            if nav_input == 0:
+                nav_input = nav_from_manager
+            confirm_pressed = confirm_pressed or self.input_manager.consume_confirm_action()
+            quit_input = quit_input or self.input_manager.consume_quit_request()
+
         if self.can_move:
-            if keys[pygame.K_RIGHT] and self.selection_index < self.attribute_nr - 1:
+            if nav_input == 1 and self.selection_index < self.attribute_nr - 1:
                 self.selection_index += 1
                 self.can_move = False
                 self.selection_time = pygame.time.get_ticks()
-            
-            elif keys[pygame.K_LEFT]and self.selection_index >= 1:
+            elif nav_input == -1 and self.selection_index >= 1:
                 self.selection_index -= 1
                 self.can_move = False
                 self.selection_time = pygame.time.get_ticks()
-            
-            if keys[pygame.K_SPACE]:
+
+            if confirm_pressed:
                 self.can_move = False
                 self.selection_time = pygame.time.get_ticks()
                 self.item_list[self.selection_index].trigger(self.player)
+
+        if quit_input:
+            self.quit_requested = True
         
     def selection_cooldown(self):
         """Manage input cooldown to prevent rapid selection changes."""
@@ -74,7 +93,34 @@ class Upgrade:
             max_value = self.max_values[index]
             cost = self.player.get_cost_by_index(index)
             item.display(self.display_surface, self.selection_index, name, value, max_value, cost)
-        
+
+        self._draw_quit_hint()
+
+    def consume_quit_request(self):
+        if self.quit_requested:
+            self.quit_requested = False
+            return True
+        return False
+
+    def _draw_quit_hint(self):
+        if self.input_manager:
+            scheme = self.input_manager.get_primary_scheme()
+        else:
+            scheme = None
+
+        if scheme == 'gamepad':
+            text = 'Quit: Button LB'
+        elif scheme == 'touch':
+            text = 'Quit: Tap top-left'
+        else:
+            text = 'Quit: Press Q'
+
+        surf = self.font.render(text, True, TEXT_COLOR)
+        rect = surf.get_rect(midbottom=(self.display_surface.get_width() // 2, self.display_surface.get_height() - 20))
+        pygame.draw.rect(self.display_surface, UI_BG_COLOR, rect.inflate(20, 10))
+        pygame.draw.rect(self.display_surface, UI_BORDER_COLOR, rect.inflate(20, 10), 2)
+        self.display_surface.blit(surf, rect)
+
 
 class Item: 
     def __init__(self, l, t, w, h, index, font):
