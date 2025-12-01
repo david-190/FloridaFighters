@@ -96,14 +96,14 @@ class UI:
             return 'X'
         if scheme == 'touch':
             return 'Tap'
-        return 'H'
+        return 'K'
 
     def _magic_label_for_scheme(self, scheme):
         if scheme == 'gamepad':
             return 'Y'
         if scheme == 'touch':
             return 'Tap'
-        return 'J'
+        return 'L'
 
     def _draw_exp_label(self, box_rect, scheme):
         if scheme == 'gamepad':

@@ -19,6 +19,7 @@ ENERGY_BAR_WIDTH = 140
 ITEM_BOX_SIZE = 80
 UI_FONT = 'graphics/font/joystix.ttf'
 UI_FONT_SIZE = 18
+UI_FONT_SIZE_LARGE = 32
 
 # Color palette
 WATER_COLOR = '#71ddee'
@@ -49,7 +50,7 @@ weapon_data = {
 
 # Magic abilities
 magic_data = {
-    'flame': {'strength': 5, 'cost': 20, 'graphic': 'graphics/particles/flame/fire.png'},
+    'flame': {'strength': 15, 'cost': 20, 'graphic': 'graphics/particles/flame/fire.png'},
     'heal': {'strength': 20, 'cost': 10, 'graphic': 'graphics/particles/heal/heal.png'}
 }
 

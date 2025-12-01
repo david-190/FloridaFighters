@@ -24,10 +24,12 @@ class InputManager:
         self._menu_toggle_requested = False
         self._weapon_switch_requested = False
         self._magic_switch_requested = False
+        self._load_menu_requested = False  # New flag for load menu
         self._menu_nav = 0
         self._confirm_requested = False
         self._primary_scheme = None
         self._quit_requested = False
+        self._ctrl_pressed = False  # Track Control key state
 
         # Touch bookkeeping
         self._touch_move_id = None
@@ -118,10 +120,9 @@ class InputManager:
         return False
 
     def consume_menu_toggle(self) -> bool:
-        if self._menu_toggle_requested:
-            self._menu_toggle_requested = False
-            return True
-        return False
+        was_requested = self._menu_toggle_requested
+        self._menu_toggle_requested = False
+        return was_requested
 
     def consume_weapon_switch(self) -> bool:
         if self._weapon_switch_requested:
@@ -151,11 +152,30 @@ class InputManager:
             self._quit_requested = False
             return True
         return False
+        
+    def consume_load_menu_request(self) -> bool:
+        """Check if load menu was requested and reset the flag."""
+        if self._load_menu_requested:
+            self._load_menu_requested = False
+            return True
+        return False
 
     # ------------------------------------------------------------------
     # Internal handlers
     # ------------------------------------------------------------------
     def _handle_keydown(self, key):
+        # Track Control key state
+        if key == pygame.K_LCTRL or key == pygame.K_RCTRL:
+            self._ctrl_pressed = True
+            return
+            
+        # Check for Control+L
+        if self._ctrl_pressed and key == pygame.K_l:
+            self._load_menu_requested = True
+            self._magic_switch_requested = False  # Don't trigger magic switch
+            self._set_primary_scheme('keyboard')
+            return
+            
         if key == pygame.K_SPACE:
             self._start_requested = True
             self._confirm_requested = True
@@ -163,7 +183,7 @@ class InputManager:
         elif key == pygame.K_ESCAPE:
             self._menu_toggle_requested = True
             self._set_primary_scheme('keyboard')
-        elif key in (pygame.K_RETURN, pygame.K_z):
+        elif key == pygame.K_RETURN:
             self._confirm_requested = True
             self._set_primary_scheme('keyboard')
         elif key in (pygame.K_RIGHT, pygame.K_d):
@@ -183,8 +203,9 @@ class InputManager:
             self._set_primary_scheme('keyboard')
 
     def _handle_keyup(self, key):
-        # Currently nothing to do on key release; kept for future use.
-        pass
+        # Track Control key release
+        if key == pygame.K_LCTRL or key == pygame.K_RCTRL:
+            self._ctrl_pressed = False
 
     def _handle_touch_down(self, event):
         if not self.gameplay_active:

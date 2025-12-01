@@ -1,10 +1,3 @@
-"""
-Modified entity.py - Optimized collision() method using Spatial Hash
-
-This version checks if self.level exists and uses spatial grid if available.
-Falls back to original method if spatial grid not available (backwards compatible).
-"""
-
 import pygame
 from math import sin 
 

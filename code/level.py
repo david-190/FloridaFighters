@@ -18,10 +18,11 @@ from spatial_hash import SpatialHashGrid
 
 class Level():
     
-    def __init__(self, input_manager=None):
+    def __init__(self, input_manager=None, game=None):
         self.display_surface = pygame.display.get_surface()
         self.game_paused = False 
         self.input_manager = input_manager
+        self.game = game  # Store reference to Game instance
         
         # Sprite groups for rendering and collision detection
         self.visible_sprites = YSortCameraGroup()
@@ -38,7 +39,8 @@ class Level():
         self.create_map()
 
         self.ui = UI(self.input_manager)
-        self.upgrade = Upgrade(self.player, self.input_manager)
+        # Pass the game instance to the Upgrade menu
+        self.upgrade = Upgrade(self.player, self.input_manager, game=self.game)
 
         self.death_screen = DeathScreen(self.display_surface)
         self.is_dead = False
@@ -50,6 +52,32 @@ class Level():
         
         # Pathfinding grid
         self.pathfinding_grid = None
+        
+    def get_state(self):
+        """Return a dictionary representing the current level state."""
+        return {
+            'player_state': self.player.get_state(),
+            'game_time': pygame.time.get_ticks() // 1000,  # Convert to seconds
+            'game_complete': self.game_complete,
+            'game_paused': self.game_paused
+        }
+
+    def load_state(self, state):
+        """Load level state from a dictionary."""
+        if not state:
+            return
+            
+        if 'player_state' in state:
+            self.player.load_state(state['player_state'])
+            
+        if 'game_complete' in state:
+            self.game_complete = state['game_complete']
+            
+        if 'game_paused' in state:
+            self.game_paused = state['game_paused']
+            
+        # Reset any necessary game state
+        self.is_dead = False
     
     def create_map(self):
         """Load CSV layouts and graphics, then instantiate all map tiles and entities."""

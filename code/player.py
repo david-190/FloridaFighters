@@ -61,7 +61,58 @@ class Player(Entity):
         # Knockback physics state
         self.knockback_velocity = pygame.math.Vector2()
         self.knockback_decay = 0.85
+
+    def get_state(self):
+        """Return a dictionary representing the player's current state."""
+        return {
+            'position': (self.rect.x, self.rect.y),
+            'health': self.health,
+            'energy': self.energy,
+            'exp': self.exp,
+            'weapon_index': self.weapon_index,
+            'magic_index': self.magic_index,
+            'stats': self.stats.copy(),
+            'max_stats': self.max_stats.copy(),
+            'upgrade_cost': self.upgrade_cost.copy()
+        }
+
+    def get_stat_name_by_index(self, index):
+        """Get the name of a stat by its index."""
+        if 0 <= index < len(self.stats):
+            return list(self.stats.keys())[index]
+        return None
+
+    def load_state(self, state):
+        """Load player state from a dictionary."""
+        if not state:
+            return
+            
+        self.rect.x, self.rect.y = state.get('position', (self.rect.x, self.rect.y))
+        self.hitbox.center = self.rect.center
+        self.health = state.get('health', self.health)
+        self.energy = state.get('energy', self.energy)
+        self.exp = state.get('exp', self.exp)
         
+        # Only update weapon/magic if they exist in the save
+        if 'weapon_index' in state:
+            self.weapon_index = state['weapon_index']
+            self.weapon = list(weapon_data.keys())[self.weapon_index]
+            
+        if 'magic_index' in state:
+            self.magic_index = state['magic_index']
+            self.magic = list(magic_data.keys())[self.magic_index]
+            
+        # Update stats if they exist in the save
+        if 'stats' in state:
+            self.stats = state['stats'].copy()
+            self.speed = self.stats['speed']
+            
+        if 'max_stats' in state:
+            self.max_stats = state['max_stats'].copy()
+            
+        if 'upgrade_cost' in state:
+            self.upgrade_cost = state['upgrade_cost'].copy()
+
     def import_player_assets(self):
         """Load all player animation frames."""
         character_path = 'graphics/player/'
@@ -163,6 +214,22 @@ class Player(Entity):
     def get_cost_by_index(self, index):
         """Retrieve upgrade cost by index for upgrade menu."""
         return list(self.upgrade_cost.values())[index]
+        
+    def upgrade_stat(self, stat_name):
+        """Upgrade the specified stat and increase its upgrade cost."""
+        if stat_name in self.stats and stat_name in self.max_stats:
+            # Increase the stat by 1, but don't exceed max
+            if self.stats[stat_name] < self.max_stats[stat_name]:
+                self.stats[stat_name] += 1
+                
+                # Special handling for speed to update movement
+                if stat_name == 'speed':
+                    self.speed = self.stats['speed']
+                    
+                # Increase the cost for the next upgrade
+                self.upgrade_cost[stat_name] = int(self.upgrade_cost[stat_name] * 1.5)
+                return True
+        return False
     
     def energy_recovery(self):
         """Gradually restore energy based on magic stat."""
