@@ -12,7 +12,7 @@ class Entity(pygame.sprite.Sprite):
         self.level = level
      
     def move(self, speed):
-        """Move entity with collision detection and normalization."""
+        # Move entity with collision detection and normalization.
         if self.direction.magnitude() != 0:
             self.direction = self.direction.normalize()
 
@@ -44,7 +44,7 @@ class Entity(pygame.sprite.Sprite):
             # OPTIMIZED PATH: Use spatial hash grid
             obstacles_to_check = self.level.spatial_grid.query(self.hitbox)
         else:
-            # FALLBACK PATH: Check all obstacles (original behavior)
+            # FALLBACK PATH: Check all obstacles
             obstacles_to_check = self.obstacle_sprites
         
         # Collision resolution
@@ -65,7 +65,7 @@ class Entity(pygame.sprite.Sprite):
                         self.hitbox.bottom = sprite.hitbox.top
                         
     def wave_value(self):
-        """Generate oscillating value for flicker effect (0 or 255)."""
+        # Generate oscillating value for flicker effect (0 or 255).
         value = sin(pygame.time.get_ticks())
         
         if value >= 0:

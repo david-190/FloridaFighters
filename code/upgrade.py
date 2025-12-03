@@ -30,7 +30,7 @@ class Upgrade:
         self.notification_time = 0
         
     def input(self):
-        """Handle upgrade menu navigation, selection, and save/load keybinds."""
+        # Handle upgrade menu navigation, selection, and save/load keybinds.
         keys = pygame.key.get_pressed()
         nav_input = 0
         confirm_pressed = keys[pygame.K_SPACE]
@@ -77,7 +77,7 @@ class Upgrade:
             self.quit_requested = True
         
     def selection_cooldown(self):
-        """Manage input cooldown to prevent rapid selection changes."""
+        # Manage input cooldown to prevent rapid selection changes.
         if not self.can_move:
             current_time = pygame.time.get_ticks()
             
@@ -85,7 +85,7 @@ class Upgrade:
                 self.can_move = True
                 
     def create_items(self):
-        """Generate upgrade items with calculated positions."""
+        # Generate upgrade items with calculated positions.
         self.item_list = []
         
         for index, item in enumerate(range(self.attribute_nr)):
@@ -99,7 +99,7 @@ class Upgrade:
             self.item_list.append(item)
                 
     def display(self):
-        """Render upgrade menu with all stat items and keybind hints."""
+        # Render upgrade menu with all stat items and keybind hints.
         self.input()
         self.selection_cooldown()
         
@@ -124,13 +124,13 @@ class Upgrade:
         return False
 
     def _draw_quit_hint(self):
-        """Display hint for quitting the upgrade menu."""
+        # Display hint for quitting the upgrade menu.
         hint_surface = self.font.render("Q - Quit", True, (255, 255, 255))
         hint_rect = hint_surface.get_rect(bottomright=(self.display_surface.get_size()[0] - 80, self.display_surface.get_size()[1] - 20))
         self.display_surface.blit(hint_surface, hint_rect)
         
     def _draw_keybind_hints(self):
-        """Display save/load keybind hints."""
+        # Display save/load keybind hints.
         save_hint = self.font.render("Ctrl+S - Save Game", True, (255, 255, 255))
         load_hint = self.font.render("Ctrl+L - Load Game", True, (255, 255, 255))
         
@@ -145,7 +145,7 @@ class Upgrade:
         self.display_surface.blit(load_hint, load_rect)
 
     def _draw_notification(self):
-        """Display save/load notification if active."""
+        # Display save/load notification if active.
         current_time = pygame.time.get_ticks()
         if current_time < self.notification_time and self.notification_text:
             # Set up font
@@ -169,7 +169,7 @@ class Item:
         self.font = font
     
     def display_names(self, surface, name, cost, selected):
-        """Render stat name and upgrade cost."""
+        # Render stat name and upgrade cost.
         color = TEXT_COLOR_SELECTED if selected else TEXT_COLOR
         
         title_surf = self.font.render(name, False, color)
@@ -182,7 +182,7 @@ class Item:
         surface.blit(cost_surf, cost_rect)
         
     def display_bar(self, surface, value, max_value, selected):
-        """Draw vertical bar showing current stat level."""
+        # Draw vertical bar showing current stat level.
         top = self.rect.midtop + pygame.math.Vector2(0,60)
         bottom = self.rect.midbottom + pygame.math.Vector2(0,-60)
         color = BAR_COLOR_SELECTED if selected else BAR_COLOR
@@ -196,7 +196,7 @@ class Item:
         pygame.draw.rect(surface, color, value_rect)
     
     def trigger(self, player):
-        """Handle stat upgrade selection."""
+        # Handle stat upgrade selection.
         stat_name = player.get_stat_name_by_index(self.index)
         if not stat_name:
             return
@@ -209,7 +209,7 @@ class Item:
             # Upgrade successful, no sound will be played
             
     def display(self, surface, selection_num, name, value, max_value, cost):
-        """Render complete upgrade item with background, border, and content."""
+        # Render complete upgrade item with background, border, and content.
         if self.index == selection_num: 
             pygame.draw.rect(surface, UPGRADE_BG_COLOR_SELECTED, self.rect)
             pygame.draw.rect(surface, UI_BORDER_COLOR, self.rect, 4)

@@ -2,7 +2,7 @@ import heapq
 import math
 
 def has_line_of_sight(grid, start, end):
-    """Check if there's a direct line of sight between two points."""
+    # Check if there's a direct line of sight between two points.
     # Bresenham's line algorithm
     x0, y0 = start
     x1, y1 = end
@@ -25,7 +25,7 @@ def has_line_of_sight(grid, start, end):
     return True
 
 def smooth_path(grid, path):
-    """Simplify path by removing unnecessary points with line-of-sight checks."""
+    #Simplify path by removing unnecessary points with line-of-sight checks.
     if len(path) < 3:
         return path
     
@@ -44,7 +44,7 @@ def smooth_path(grid, path):
     return smoothed_path
 
 class Node:
-    """A node in the grid for A* pathfinding"""
+    # A node in the grid for A* pathfinding
     def __init__(self, position, parent=None):
         self.position = position
         self.parent = parent

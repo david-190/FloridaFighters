@@ -28,7 +28,7 @@ class UI:
             self.magic_graphics.append(magic)
     
     def show_bar(self, current, max_amount, bg_rect, color):
-        """Draw stat bar with background and border."""
+        # Draw stat bar with background and border.
         pygame.draw.rect(self.display_surface, UI_BG_COLOR, bg_rect)
         
         # Calculate bar width based on current stat percentage
@@ -41,7 +41,7 @@ class UI:
         pygame.draw.rect(self.display_surface, UI_BG_COLOR, bg_rect, 3)
         
     def show_exp(self, exp):
-        """Display experience points in bottom-right corner."""
+        # Display experience points in bottom-right corner.
         text_surf = self.font.render(str(int(exp)), False, TEXT_COLOR)
         x = self.display_surface.get_size()[0] - 20
         y = self.display_surface.get_size()[1] - 20
@@ -54,7 +54,7 @@ class UI:
         return box_rect
     
     def selection_box(self, left, top, has_switched):
-        """Draw selection box with highlight border if recently switched."""
+        # Draw selection box with highlight border if recently switched.
         bg_rect = pygame.Rect(left, top, ITEM_BOX_SIZE, ITEM_BOX_SIZE)
         pygame.draw.rect(self.display_surface, UI_BG_COLOR , bg_rect)
         
@@ -66,7 +66,7 @@ class UI:
         return bg_rect
     
     def weapon_overlay(self, weapon_index, has_switched, scheme):
-        """Display current weapon in selection box."""
+        # Display current weapon in selection box.
         bg_rect = self.selection_box(10, 630, has_switched)
         weapon_surf = self.weapon_graphics[weapon_index]
         weapon_rect  = weapon_surf.get_rect(center = bg_rect.center )
@@ -76,7 +76,7 @@ class UI:
         return bg_rect
     
     def magic_overlay(self, magic_index, has_switched, scheme):
-        """Display current magic ability in selection box."""
+        # Display current magic ability in selection box.
         bg_rect_magic = self.selection_box(80, 635, has_switched)
         magic_surf = self.magic_graphics[magic_index]
         magic_rect = magic_surf.get_rect(center = bg_rect_magic.center)
@@ -118,7 +118,7 @@ class UI:
         self.display_surface.blit(label_surf, label_rect)
 
     def display(self, player):
-        """Render all UI elements with current player stats."""
+        # Render all UI elements with current player stats.
         self.show_bar(player.health, player.stats['health'], self.health_bar_rect, HEALTH_COLOR)
         self.show_bar(player.energy, player.stats['energy'], self.energy_bar_rect, ENERGY_COLOR)
         

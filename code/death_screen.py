@@ -13,7 +13,6 @@ class DeathScreen:
         self.text_rect = self.text_surf.get_rect(center=(screen_width//2, screen_height//2 + 60))
 
     def draw(self):
-        """Render death screen with semi-transparent overlay."""
         # Create darkened overlay
         overlay = pygame.Surface(self.display_surface.get_size())
         overlay.set_alpha(180)

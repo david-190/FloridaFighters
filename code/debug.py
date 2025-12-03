@@ -4,7 +4,7 @@ pygame.init()
 font = pygame.font.Font(None,30)
 
 def debug(info, y = 10, x = 10):
-    """Display debug text with black background at specified screen position."""
+    # Display debug text with black background at specified screen position.
     display_surface = pygame.display.get_surface()
     debug_surface = font.render(str(info), True, 'White')
     debug_rect = debug_surface.get_rect(topleft = (x,y))

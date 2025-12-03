@@ -33,7 +33,7 @@ class Level():
         self.attack_sprites = pygame.sprite.Group()
         self.attackable_sprites = pygame.sprite.Group()
         
-        # === NEW: Spatial Hash Grid for optimized collision detection ===
+        # Spatial Hash Grid for optimized collision detection
         self.spatial_grid = SpatialHashGrid(cell_size=TILESIZE * 3)
         
         self.create_map()
@@ -54,7 +54,7 @@ class Level():
         self.pathfinding_grid = None
         
     def get_state(self):
-        """Return a dictionary representing the current level state."""
+        # Return a dictionary representing the current level state.
         return {
             'player_state': self.player.get_state(),
             'game_time': pygame.time.get_ticks() // 1000,  # Convert to seconds
@@ -63,7 +63,7 @@ class Level():
         }
 
     def load_state(self, state):
-        """Load level state from a dictionary."""
+        # Load level state from a dictionary.
         if not state:
             return
             
@@ -80,7 +80,7 @@ class Level():
         self.is_dead = False
     
     def create_map(self):
-        """Load CSV layouts and graphics, then instantiate all map tiles and entities."""
+        # Load CSV layouts and graphics, then instantiate all map tiles and entities.
         layouts = {
             'boundary': import_csv_layout('map/map_FloorBlocks.csv'),
             'grass': import_csv_layout('map/map_Grass.csv'),
@@ -154,12 +154,12 @@ class Level():
                                 self.pathfinding_grid[row_index][col_index] = False
         
     def create_attack(self):
-        """Instantiate player's weapon sprite."""
+        # Instantiate player's weapon sprite.
         self.current_attack = Weapon(self.player, 
                                      groups = [self.visible_sprites, self.attack_sprites])
     
     def create_magic(self, style, strength, cost):
-        """Execute magic attack based on style type."""
+        # Execute magic attack based on style type.
         if style == 'heal':
             self.magic_player.heal(self.player, strength, cost, [self.visible_sprites])
             
@@ -167,13 +167,13 @@ class Level():
             self.magic_player.flame(self.player, cost, [self.visible_sprites, self.attack_sprites])
     
     def destroy_attack(self):
-        """Remove current attack sprite from all groups."""
+        # Remove current attack sprite from all groups.
         if self.current_attack:
             self.current_attack.kill()
         self.current_attack = None
     
     def destroy_grass(self):
-        """Remove grass when attacked and drop items."""
+        # Remove grass when attacked and drop items.
         for attack_sprite in self.attack_sprites:
             collision_sprites = pygame.sprite.spritecollide(attack_sprite, self.attackable_sprites, False)
             for sprite in collision_sprites:
@@ -189,7 +189,7 @@ class Level():
                     sprite.kill()
     
     def player_attack_logic(self):
-        """Check for collisions between attack sprites and attackable entities."""
+        # Check for collisions between attack sprites and attackable entities.
         if self.attack_sprites:
             for attack_sprite in self.attack_sprites:
                 collision_sprite = pygame.sprite.spritecollide(attack_sprite, self.attackable_sprites, False)
@@ -208,7 +208,7 @@ class Level():
                             target_sprite.get_damge(self.player, attack_sprite.sprite_type)
     
     def damage_player(self, amount, attack_type, source_pos=None):
-        """Apply damage to player if not currently invulnerable."""
+        # Apply damage to player if not currently invulnerable.
         if self.player.vulnerable:
             self.player.health -= amount
             self.player.vulnerable = False
@@ -218,15 +218,15 @@ class Level():
                 self.player.apply_knockback(source_pos)
             
     def trigger_death_particles(self, pos, particle_type): 
-        """Spawn particle effect at specified position."""
+        # Spawn particle effect at specified position.
         self.animation_player.create_particles(particle_type, pos, [self.visible_sprites])
         
     def add_exp(self, amount):
-        """Add experience points to player."""
+        # Add experience points to player.
         self.player.exp += amount
         
     def toggle_menu(self):
-        """Toggle pause state for upgrade menu."""
+        # Toggle pause state for upgrade menu.
         self.game_paused = not self.game_paused
         if self.game_paused and self.input_manager:
             # Require the player to press the quit input while in the menu
@@ -249,12 +249,6 @@ class Level():
         # Insert all obstacles into spatial grid
         for sprite in self.obstacle_sprites:
             self.spatial_grid.insert(sprite)
-        
-        # Optionally insert enemies for enemy-enemy interactions
-        # Uncomment if you add enemy-enemy collision later:
-        # for sprite in self.visible_sprites:
-        #     if hasattr(sprite, 'sprite_type') and sprite.sprite_type == 'enemy':
-        #         self.spatial_grid.insert(sprite)
         
     def _draw_enemy_paths_debug(self):
         """Render enemy A* paths when debug mode is enabled."""
@@ -284,7 +278,7 @@ class Level():
                 pygame.draw.circle(self.display_surface, (255, 140, 0), point, 4)
 
     def run(self):
-        """Main level update and render loop."""
+        # Main level update and render loop.
         # Check for player death
         if self.player.health <= 0:
             self.is_dead = True
@@ -303,7 +297,7 @@ class Level():
                 sys.exit()
             return
 
-        # === NEW: Rebuild spatial grid each frame ===
+        # Rebuild spatial grid each frame
         self._rebuild_spatial_grid()
 
         # Render sprites and UI
@@ -345,7 +339,7 @@ class Level():
 
         
 class YSortCameraGroup(pygame.sprite.Group):
-    """Custom sprite group with camera offset and Y-axis sorting for depth."""
+    # Custom sprite group with camera offset and Y-axis sorting for depth.
     
     def __init__(self):
        super().__init__()
@@ -359,7 +353,7 @@ class YSortCameraGroup(pygame.sprite.Group):
        self.floor_rect = self.floor_surface.get_rect(topleft = (0,0))
        
     def custom_draw(self, player):
-        """Render all sprites with camera offset centered on player."""
+        # Render all sprites with camera offset centered on player.
         self.offset.x = player.rect.centerx - self.half_width
         self.offset.y = player.rect.centery - self.half_height
        
@@ -371,7 +365,7 @@ class YSortCameraGroup(pygame.sprite.Group):
             self.display_surface.blit(sprite.image, offset_pos)
             
     def enemy_update(self,player):
-        """Update all enemy sprites with player position."""
+        # Update all enemy sprites with player position.
         enemy_sprites = [sprite for sprite in self.sprites() if hasattr(sprite, 'sprite_type') and sprite.sprite_type == 'enemy']
         
         for enemy in enemy_sprites:

@@ -70,7 +70,7 @@ class Enemy(Entity):
         self.knockback_decay = 0.82
     
     def import_graphics(self, name):
-        """Load all animation frames for the specified monster type."""
+        # Load all animation frames for the specified monster type.
         self.animations = {'idle': [], 'move': [], 'attack': []}
         main_path = f'graphics/monsters/{name}/'
         
@@ -78,7 +78,7 @@ class Enemy(Entity):
             self.animations[animation] = import_folder(main_path + animation)
     
     def get_player_distance_direction(self, player):
-        """Calculate distance and normalized direction vector to player."""
+        # Calculate distance and normalized direction vector to player.
         enemy_vec = pygame.math.Vector2(self.rect.center)
         player_vec = pygame.math.Vector2(player.rect.center)
         distance = (player_vec - enemy_vec).magnitude()
@@ -91,13 +91,13 @@ class Enemy(Entity):
         return (distance, direction)
     
     def get_grid_position(self, pos):
-        """Convert pixel position to grid coordinates (row, col)."""
+        # Convert pixel position to grid coordinates (row, col).
         col = int(pos[0] // TILESIZE)
         row = int(pos[1] // TILESIZE)
         return (row, col)
     
     def update_state(self, player):
-        """Finite state machine evaluating enemy behavior."""
+        # Finite state machine evaluating enemy behavior.
         distance, _ = self.get_player_distance_direction(player)
         low_health = self.health <= self.max_health * 0.3
 
@@ -122,7 +122,7 @@ class Enemy(Entity):
             self.status = 'idle'
     
     def actions(self, player):
-        """Execute behavior based on current status."""
+        # Execute behavior based on current status.
         distance = self.get_player_distance_direction(player)[0]
         
         if self.state == 'attack':
@@ -201,7 +201,7 @@ class Enemy(Entity):
             self.direction = pygame.math.Vector2(0, 0)
     
     def animate(self):
-        """Update animation frame and apply visual effects."""
+        # Update animation frame and apply visual effects.
         animation = self.animations[self.status]
         self.frame_index += self.animation_speed
 
@@ -220,7 +220,7 @@ class Enemy(Entity):
             self.image.set_alpha(255)
         
     def cooldown(self):
-        """Manage attack and invulnerability cooldown timers."""
+        # Manage attack and invulnerability cooldown timers.
         current_time = pygame.time.get_ticks()
         
         if not self.can_attack:
@@ -232,7 +232,7 @@ class Enemy(Entity):
                 self.vulnerable = True
     
     def get_damge(self, player, attack_type):
-        """Apply damage to enemy if not currently invulnerable."""
+        # Apply damage to enemy if not currently invulnerable.
         if self.vulnerable:
             self.hit_sound.play()
             self.direction = self.get_player_distance_direction(player)[1]
@@ -253,7 +253,7 @@ class Enemy(Entity):
             self.vulnerable = False
 
     def check_death(self):
-        """Remove enemy and trigger effects if health depleted."""
+        # Remove enemy and trigger effects if health depleted.
         if self.health <= 0:
             self.kill()
             self.trigger_death_particles(self.rect.center, self.monster_name)
@@ -261,7 +261,7 @@ class Enemy(Entity):
             self.death_sound.play()
 
     def hit_reaction(self):
-        """Apply decaying knockback impulse when recently hit."""
+        # Apply decaying knockback impulse when recently hit.
         if self.knockback_velocity.length_squared() <= 0.05:
             self.knockback_velocity.update(0, 0)
             return False
@@ -377,7 +377,7 @@ class Enemy(Entity):
                 self.rect.center = self.hitbox.center
     
     def update(self):
-        """Update enemy state each frame."""
+        # Update enemy state each frame.
         knockback_active = self.hit_reaction()
         if not knockback_active:
             self.move(self.speed)
@@ -386,6 +386,6 @@ class Enemy(Entity):
         self.check_death()
     
     def enemy_update(self, player):
-        """Update AI behavior based on player position."""
+        # Update AI behavior based on player position.
         self.update_state(player)
         self.actions(player)

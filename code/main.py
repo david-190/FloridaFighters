@@ -55,7 +55,7 @@ class Game:
         SaveManager.ensure_save_dir_exists()
         
     def run(self):
-        """Main game loop handling events, updates, and rendering."""
+        # Main game loop handling events, updates, and rendering.
         while True:
             # Process all events first
             for event in pygame.event.get():
@@ -122,7 +122,7 @@ class Game:
             self.clock.tick(FPS)
 
     def _handle_state_transitions(self):
-        """Handle transitions between game states."""
+        # Handle transitions between game states.
         if not self.game_started:
             self.input_manager.set_gameplay_active(False)
             return
@@ -186,7 +186,7 @@ class Game:
 
     
     def set_save_slot(self, slot: int) -> bool:
-        """Change the current save slot."""
+        # Change the current save slot.
         if 0 <= slot < self.max_save_slots:
             self.save_slot = slot
             self.show_notification(f"Using Save Slot {slot + 1}")
@@ -194,7 +194,7 @@ class Game:
         return False
             
     def save_game(self, slot=None):
-        """Save the current game state to the specified slot."""
+        # Save the current game state to the specified slot.
         if slot is not None:
             self.set_save_slot(slot)
             return self._perform_save()
@@ -205,7 +205,7 @@ class Game:
             return False
             
     def load_game(self, slot=None):
-        """Load a game state from the specified slot."""
+        # Load a game state from the specified slot.
         if slot is not None:
             self.set_save_slot(slot)
         
@@ -218,14 +218,14 @@ class Game:
         return self._perform_load()
             
     def _on_save_slot_selected(self, slot: int):
-        """Callback when a save slot is selected from the menu."""
+        # Callback when a save slot is selected from the menu.
         self.set_save_slot(slot)
         if self.game_started and self.level:
             # Always save when a slot is selected from the save menu
             self._perform_save()
                 
     def _on_load_slot_selected(self, slot: int):
-        """Callback when a load slot is selected from the menu."""
+        # Callback when a load slot is selected from the menu.
         self.set_save_slot(slot)
         if not self.game_started:
             # If we're on the start screen, start the game first
@@ -235,7 +235,7 @@ class Game:
             self._perform_load()
             
     def _perform_save(self) -> bool:
-        """Internal method to perform the actual save operation."""
+        # Internal method to perform the actual save operation.
         if not self.game_started or not self.level:
             return False
             
@@ -246,7 +246,7 @@ class Game:
         return False
             
     def _perform_load(self) -> bool:
-        """Internal method to perform the actual load operation."""
+        # Internal method to perform the actual load operation.
         if not self.game_started or not self.level:
             return False
                 
@@ -260,12 +260,12 @@ class Game:
             return False
             
     def show_notification(self, text, duration=2000):
-        """Show a temporary notification on screen."""
+        # Show a temporary notification on screen.
         self.save_notification_text = text
         self.save_notification_time = pygame.time.get_ticks() + duration
         
     def _draw_notification(self):
-        """Draw the current notification if active."""
+        # Draw the current notification if active.
         current_time = pygame.time.get_ticks()
         if current_time < self.save_notification_time and self.save_notification_text:
             # Set up font

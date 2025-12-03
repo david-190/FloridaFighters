@@ -3,7 +3,7 @@ from os import walk
 import pygame
 
 def import_csv_layout(path):
-    """Load CSV file and return 2D list representing tile layout."""
+    # Load CSV file and return 2D list representing tile layout.
     terrain_map = []
     
     with open(path, 'r') as level_map:
@@ -15,7 +15,7 @@ def import_csv_layout(path):
         return terrain_map
 
 def import_folder(path):
-    """Load all images from folder and return list of surfaces."""
+    # Load all images from folder and return list of surfaces.
     surface_list = []
     
     for _, __, img_files in walk(path):

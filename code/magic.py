@@ -11,7 +11,7 @@ class MagicPlayer:
         }
         
     def heal(self, player, strength, cost, groups):
-        """Restore player health if sufficient energy available."""
+        # Restore player health if sufficient energy available.
         if player.energy >= cost:
             self.sounds['heal'].play()
             player.health += strength
@@ -25,7 +25,7 @@ class MagicPlayer:
             self.animation_player.create_particles('heal', player.rect.center, groups)          
                     
     def flame(self, player, cost, groups):
-        """Spawn flame particles in direction player is facing."""
+        # Spawn flame particles in direction player is facing.
         if player.energy >= cost:
             player.energy -= cost
             self.sounds['flame'].play()

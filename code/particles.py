@@ -5,7 +5,7 @@ from support import import_folder
 class AnimationPlayer:
     
     def __init__(self):
-        """Load all particle animation frames into memory."""
+        # Load all particle animation frames into memory.
         self.frames = {
             # Magic effects
             'flame': import_folder('graphics/particles/flame/frames'),

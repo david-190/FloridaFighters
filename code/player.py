@@ -63,7 +63,7 @@ class Player(Entity):
         self.knockback_decay = 0.85
 
     def get_state(self):
-        """Return a dictionary representing the player's current state."""
+        # Return a dictionary representing the player's current state.
         return {
             'position': (self.rect.x, self.rect.y),
             'health': self.health,
@@ -77,13 +77,13 @@ class Player(Entity):
         }
 
     def get_stat_name_by_index(self, index):
-        """Get the name of a stat by its index."""
+        # Get the name of a stat by its index.
         if 0 <= index < len(self.stats):
             return list(self.stats.keys())[index]
         return None
 
     def load_state(self, state):
-        """Load player state from a dictionary."""
+        # Load player state from a dictionary.
         if not state:
             return
             
@@ -114,7 +114,7 @@ class Player(Entity):
             self.upgrade_cost = state['upgrade_cost'].copy()
 
     def import_player_assets(self):
-        """Load all player animation frames."""
+        # Load all player animation frames.
         character_path = 'graphics/player/'
         self.animations = {'up': [],'down': [], 'left': [], 'right': [],
                            'right_idle': [], 'left_idle': [], 'up_idle': [], 'down_idle': [],
@@ -125,14 +125,14 @@ class Player(Entity):
             self.animations[animation] = import_folder(full_path)
         
     def input(self):
-        """Handle player input from keyboard or InputManager."""
+        # Handle player input from keyboard or InputManager.
         if self.input_manager:
             self._input_from_manager()
         else:
             self._input_from_keyboard()
         
     def get_status(self):
-        """Update player status string based on movement and action state."""
+        # Update player status string based on movement and action state.
         # Apply idle status when stationary
         if self.direction.x == 0 and self.direction.y == 0:
             if 'idle' not in self.status and 'attack' not in self.status:
@@ -153,7 +153,7 @@ class Player(Entity):
                 self.status = self.status.replace('_attack', '')
     
     def cooldowns(self):
-        """Manage cooldown timers for attacks, switching, and invulnerability."""
+        # Manage cooldown timers for attacks, switching, and invulnerability.
         current_time = pygame.time.get_ticks()
         
         if self.attacking:
@@ -175,7 +175,7 @@ class Player(Entity):
                 self.vulnerable = True
    
     def animate(self):
-        """Update animation frame and apply visual effects."""
+        # Update animation frame and apply visual effects.
         animation = self.animations[self.status]
         
         self.frame_index += self.animation_speed
@@ -194,29 +194,29 @@ class Player(Entity):
             self.image.set_alpha(255)
         
     def get_full_weapon_damage(self):
-        """Calculate total weapon damage including base attack stat."""
+        # Calculate total weapon damage including base attack stat.
         base_damage = self.stats['attack']
         weapon_damage = weapon_data[self.weapon]['damage']
         
         return base_damage + weapon_damage
     
     def get_full_magic_damage(self):
-        """Calculate total magic damage including base magic stat."""
+        # Calculate total magic damage including base magic stat.
         base_damage = self.stats['magic']
         spell_damage = magic_data[self.magic]['strength']
         
         return base_damage + spell_damage
         
     def get_value_by_index(self, index):
-        """Retrieve stat value by index for upgrade menu."""
+        # Retrieve stat value by index for upgrade menu.
         return list(self.stats.values())[index]
     
     def get_cost_by_index(self, index):
-        """Retrieve upgrade cost by index for upgrade menu."""
+        # Retrieve upgrade cost by index for upgrade menu.
         return list(self.upgrade_cost.values())[index]
         
     def upgrade_stat(self, stat_name):
-        """Upgrade the specified stat and increase its upgrade cost."""
+        # Upgrade the specified stat and increase its upgrade cost.
         if stat_name in self.stats and stat_name in self.max_stats:
             # Increase the stat by 1, but don't exceed max
             if self.stats[stat_name] < self.max_stats[stat_name]:
@@ -232,7 +232,7 @@ class Player(Entity):
         return False
     
     def energy_recovery(self):
-        """Gradually restore energy based on magic stat."""
+        # Gradually restore energy based on magic stat.
         if self.energy <= self.stats['energy']:
             self.energy += 0.01 * self.stats['magic']
         else:
@@ -340,7 +340,7 @@ class Player(Entity):
             self.status = 'down' if vector.y > 0 else 'up'
     
     def apply_knockback(self, source_position, strength=12):
-        """Receive an impulse pushing the player away from the source position."""
+        # Receive an impulse pushing the player away from the source position.
         direction = pygame.math.Vector2(self.rect.center) - pygame.math.Vector2(source_position)
         if direction.length() == 0:
             return

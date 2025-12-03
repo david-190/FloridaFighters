@@ -16,20 +16,20 @@ class SaveSlotMenu:
         self.is_save_mode = True  # Track whether we're in save or load mode
         
     def show(self):
-        """Show the save slot selection menu."""
+        # Show the save slot selection menu.
         self.visible = True
         self.selected_slot = 0
         
     def hide(self):
-        """Hide the save slot selection menu."""
+        # Hide the save slot selection menu.
         self.visible = False
         
     def set_mode(self, is_save_mode: bool):
-        """Set whether the menu is in save or load mode."""
+        # Set whether the menu is in save or load mode.
         self.is_save_mode = is_save_mode
         
     def handle_event(self, event: pygame.event.Event) -> bool:
-        """Handle input events for the save slot menu."""
+        # Handle input events for the save slot menu.
         if not self.visible:
             return False
             
@@ -71,7 +71,7 @@ class SaveSlotMenu:
         return False
         
     def draw(self):
-        """Draw the save slot selection menu."""
+        # Draw the save slot selection menu
         if not self.visible:
             return
             

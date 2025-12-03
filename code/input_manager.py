@@ -6,7 +6,7 @@ _MAX_TOUCH_DISTANCE = 0.25
 
 
 class InputManager:
-    """Aggregates keyboard, touch, and gamepad input into a unified control state."""
+    # Aggregates keyboard, touch, and gamepad input into a unified control state.
 
     def __init__(self, screen_size):
         self.screen_width, self.screen_height = screen_size
@@ -44,9 +44,6 @@ class InputManager:
         self._gamepad_magic = False
         self._refresh_joysticks()
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
     def set_gameplay_active(self, is_active: bool):
         self.gameplay_active = is_active
         if not is_active:
@@ -160,9 +157,6 @@ class InputManager:
             return True
         return False
 
-    # ------------------------------------------------------------------
-    # Internal handlers
-    # ------------------------------------------------------------------
     def _handle_keydown(self, key):
         # Track Control key state
         if key == pygame.K_LCTRL or key == pygame.K_RCTRL:

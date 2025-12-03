@@ -9,7 +9,7 @@ class SaveManager:
     
     @classmethod
     def ensure_save_dir_exists(cls):
-        """Create saves directory if it doesn't exist."""
+        # Create saves directory if it doesn't exist.
         try:
             os.makedirs(cls.SAVE_DIR, exist_ok=True)
             print(f"Successfully created/verified save directory: {os.path.abspath(cls.SAVE_DIR)}")
@@ -28,12 +28,12 @@ class SaveManager:
     
     @classmethod
     def get_save_path(cls, slot: int = 0) -> str:
-        """Get the path to a save file for the given slot."""
+        # Get the path to a save file for the given slot.
         return os.path.join(cls.SAVE_DIR, f'save_{slot}.json')
         
     @classmethod
     def has_save(cls, slot: int = 0) -> bool:
-        """Check if a save file exists for the given slot."""
+        # Check if a save file exists for the given slot.
         return os.path.exists(cls.get_save_path(slot))
     
     @classmethod
@@ -140,7 +140,7 @@ class SaveManager:
     
     @classmethod
     def delete_save(cls, slot: int = 0) -> bool:
-        """Delete the save file for the specified slot."""
+        # Delete the save file for the specified slot.
         try:
             if cls.has_save(slot):
                 os.remove(cls.get_save_path(slot))
@@ -152,7 +152,7 @@ class SaveManager:
             
     @classmethod
     def get_save_info(cls, slot: int) -> Optional[Dict[str, Any]]:
-        """Get metadata about a save file without loading the entire save."""
+        # Get metadata about a save file without loading the entire save.
         if not cls.has_save(slot):
             return None
             
@@ -173,7 +173,7 @@ class SaveManager:
             
     @classmethod
     def list_saves(cls) -> List[Dict[str, Any]]:
-        """Get information about all existing save files."""
+        # Get information about all existing save files.
         saves = []
         for slot in range(cls.MAX_SAVE_SLOTS):
             save_info = cls.get_save_info(slot)
